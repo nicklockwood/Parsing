@@ -25,100 +25,63 @@ public enum LexerError: Error, Equatable {
 }
 
 public func tokenize(_ input: String) throws -> [Token] {
-    var scalars = Substring(input).unicodeScalars
-    var tokens: [Token] = []
-    while let token = scalars.readToken() {
-        tokens.append(token)
-    }
-    if !scalars.isEmpty {
-        throw LexerError.unrecognizedInput(String(scalars))
-    }
-    return tokens
-}
+    let whitespace = try NSRegularExpression(pattern: "(\\s|\\n)+")
+    let assign = try NSRegularExpression(pattern: "=")
+    let plus = try NSRegularExpression(pattern: "\\+")
+    let identifier = try NSRegularExpression(pattern: "[a-z][a-z0-9]*", options: .caseInsensitive)
+    let number = try NSRegularExpression(pattern: "[0-9.]+")
+    let string = try NSRegularExpression(pattern: "\"(\\\\\"|\\\\\\\\|[^\"\\\\])*\"") // !!!
 
-// MARK: implementation
-
-private extension Substring.UnicodeScalarView {
-
-    mutating func skipWhitespace() {
-        let whitespace = CharacterSet.whitespacesAndNewlines
-        while let scalar = self.first, whitespace.contains(scalar) {
-            self.removeFirst()
-        }
-    }
-
-    mutating func readOperator() -> Token? {
-        let start = self
-        switch self.popFirst() {
-        case "=":
-            return Token.assign
-        case "+":
-            return Token.plus
-        default:
-            self = start
+    // this part is nasty because NSRange indices don't map directly to String indices
+    var range = NSRange(location: 0, length: input.utf16.count)
+    func readToken(_ regex: NSRegularExpression) -> String? {
+        guard let match = regex.firstMatch(in: input, options: .anchored, range: range) else {
             return nil
         }
+        range.location += match.range.length
+        range.length -= match.range.length
+        return (input as NSString).substring(with: match.range)
     }
 
-    mutating func readIdentifier() -> Token? {
-        guard let head = self.first, CharacterSet.letters.contains(head) else {
-            return nil
+    func readToken() -> Token? {
+        _ = readToken(whitespace) // skip whitespace
+        if readToken(assign) != nil {
+            return .assign
         }
-        var name = String(self.removeFirst())
-        while let c = self.first, CharacterSet.alphanumerics.contains(c) {
-            name.append(Character(self.removeFirst()))
+        if readToken(plus) != nil {
+            return .plus
         }
-        switch name {
-        case "let":
-            return Token.let
-        case "print":
-            return Token.print
-        default:
-            return Token.identifier(name)
-        }
-    }
-
-    mutating func readNumber() -> Token? {
-        let start = self
-        var digits = ""
-        while let c = self.first, CharacterSet.decimalDigits.contains(c) || c == "." {
-            digits.append(Character(self.removeFirst()))
-        }
-        if let double = Double(digits) {
-            return Token.number(double)
-        }
-        self = start
-        return nil
-    }
-
-    mutating func readString() -> Token? {
-        guard first == "\"" else {
-            return nil
-        }
-        let start = self
-        self.removeFirst()
-        var string = "", escaped = false
-        while let scalar = self.popFirst() {
-            switch scalar {
-            case "\"" where !escaped:
-                return Token.string(string)
-            case "\\" where !escaped:
-                escaped = true
+        if let name = readToken(identifier) {
+            switch name {
+            case "let":
+                return .let
+            case "print":
+                return .print
             default:
-                string.append(Character(scalar))
-                escaped = false
+                return .identifier(name)
             }
         }
-        self = start
+        let start = range
+        if let digits = readToken(number), let double = Double(digits) {
+            return .number(double)
+        } else {
+            range = start
+        }
+        if let string = readToken(string) {
+            let unescapedString = String(string.dropFirst().dropLast())
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+            return .string(unescapedString)
+        }
         return nil
     }
 
-    mutating func readToken() -> Token? {
-        self.skipWhitespace()
-        return
-            self.readOperator() ??
-            self.readIdentifier() ??
-            self.readNumber() ??
-            self.readString()
+    var tokens: [Token] = []
+    while let token = readToken() {
+        tokens.append(token)
     }
+    if range.length != 0 {
+        throw LexerError.unrecognizedInput((input as NSString).substring(with: range))
+    }
+    return tokens
 }
