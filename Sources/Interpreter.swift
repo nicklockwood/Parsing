@@ -12,6 +12,7 @@ import Foundation
 
 public enum RuntimeError: Error, Equatable {
     case undefinedVariable(String)
+    case typeMismatch(Expression)
 }
 
 public func evaluate(_ program: [Statement]) throws -> String {
@@ -78,6 +79,15 @@ extension Expression {
                 return .number(lhs + rhs)
             case (.string, _), (_, .string):
                 return .string("\(value1)\(value2)")
+            }
+        case .multiplication(lhs: let expression1, rhs: let expression2):
+            let value1 = try expression1.evaluate(in: environment)
+            let value2 = try expression2.evaluate(in: environment)
+            switch (value1, value2) {
+            case (.number(let lhs), .number(let rhs)):
+                return .number(lhs * rhs)
+            case (.string, _), (_, .string):
+                throw RuntimeError.typeMismatch(self)
             }
         }
     }

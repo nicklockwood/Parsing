@@ -47,6 +47,8 @@ extension Expression: CustomStringConvertible {
             return name
         case .addition(lhs: let lhs, rhs: let rhs):
             return "\(lhs) + \(rhs)"
+        case .multiplication(lhs: let lhs, rhs: let rhs):
+            return "\(lhs) * \(rhs)"
         }
     }
 }

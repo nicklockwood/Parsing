@@ -132,9 +132,12 @@ class LexerTests: XCTestCase {
     // MARK: operators
 
     func testOperators() {
-        let input = "a = 4 + b"
+        let input = "a = 4 + b * c"
         let tokens: [Token] = [
-            .identifier("a"), .assign, .number(4), .plus, .identifier("b"),
+            .identifier("a"),
+            .assign, .number(4),
+            .plus, .identifier("b"),
+            .times, .identifier("c"),
         ]
         XCTAssertEqual(try tokenize(input), tokens)
     }

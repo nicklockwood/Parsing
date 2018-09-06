@@ -85,4 +85,65 @@ class ParserTests: XCTestCase {
             XCTAssertEqual(error as? ParserError, .unexpectedToken(.plus))
         }
     }
+
+    // MARK: operator precedence
+
+    func testEqualPrecedence() {
+        let input = "print 1 + 2 + 3"
+        let program: [Statement] = [
+            .print(.addition(
+                lhs: .number(1),
+                rhs: .addition(
+                    lhs: .number(2),
+                    rhs: .number(3)
+                )
+            ))
+        ]
+        XCTAssertEqual(try parse(input), program)
+    }
+
+    func testRightToLeftPrecedence() {
+        let input = "print 1 + 2 * 3"
+        let program: [Statement] = [
+            .print(.addition(
+                lhs: .number(1),
+                rhs: .multiplication(
+                    lhs: .number(2),
+                    rhs: .number(3)
+                )
+            ))
+        ]
+        XCTAssertEqual(try parse(input), program)
+    }
+
+    func testLeftToRightPrecedence() {
+        let input = "print 1 * 2 + 3"
+        let program: [Statement] = [
+            .print(.addition(
+                lhs: .multiplication(
+                    lhs: .number(1),
+                    rhs: .number(2)
+                ),
+                rhs: .number(3)
+            ))
+        ]
+        XCTAssertEqual(try parse(input), program)
+    }
+
+    func testLeftToRightPrecedence2() {
+        let input = "print 1 * 2 * 3 + 4"
+        let program: [Statement] = [
+            .print(.addition(
+                lhs: .multiplication(
+                    lhs: .number(1),
+                    rhs: .multiplication(
+                        lhs: .number(2),
+                        rhs: .number(3)
+                    )
+                ),
+                rhs: .number(4)
+            ))
+        ]
+        XCTAssertEqual(try parse(input), program)
+    }
 }

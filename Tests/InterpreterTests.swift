@@ -12,11 +12,11 @@ import XCTest
 class InterpreterTests: XCTestCase {
 
     func testDeclaration() throws {
-        let input = "let foo = 5 + 6 + 7"
+        let input = "let foo = 5 * 6 + 7"
         let program = try parse(input)
         let environment = Environment()
         XCTAssertNoThrow(try program[0].evaluate(in: environment))
-        XCTAssertEqual(environment.variables, ["foo": .number(18)])
+        XCTAssertEqual(environment.variables, ["foo": .number(37)])
     }
 
     func testPrintString() throws {

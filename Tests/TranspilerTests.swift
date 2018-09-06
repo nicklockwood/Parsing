@@ -12,12 +12,12 @@ import XCTest
 class TranspilerTests: XCTestCase {
 
     func testDeclaration() throws {
-        let input = "let foo = 5 + 6 + 7"
+        let input = "let foo = 5 * 6 + 7"
         let program = try parse(input)
         let context = Context()
         XCTAssertNoThrow(try program[0].transpile(in: context))
         XCTAssertEqual(context.variables, ["foo": .number])
-        XCTAssertEqual(context.output, "let foo = 5.0 + 6.0 + 7.0\n")
+        XCTAssertEqual(context.output, "let foo = 5.0 * 6.0 + 7.0\n")
     }
 
     func testPrintString() throws {

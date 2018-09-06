@@ -12,6 +12,7 @@ import Foundation
 
 public enum TranspilerError: Error, Equatable {
     case undefinedVariable(String)
+    case typeMismatch(Expression)
 }
 
 public func transpile(_ program: [Statement]) throws -> String {
@@ -75,6 +76,15 @@ extension Expression {
                 return (.number, "\(lhs) + \(rhs)")
             case (.string, _), (_, .string):
                 return (.string, "\"\\(\(lhs))\\(\(rhs))\"")
+            }
+        case .multiplication(lhs: let expression1, rhs: let expression2):
+            let (type1, lhs) = try expression1.transpile(in: context)
+            let (type2, rhs) = try expression2.transpile(in: context)
+            switch (type1, type2) {
+            case (.number, .number):
+                return (.number, "\(lhs) * \(rhs)")
+            case (.string, _), (_, .string):
+                throw RuntimeError.typeMismatch(self)
             }
         }
     }

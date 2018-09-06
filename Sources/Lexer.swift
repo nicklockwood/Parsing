@@ -13,6 +13,7 @@ import Foundation
 public enum Token: Equatable {
     case assign // = operator
     case plus // + operator
+    case times // * operator
     case identifier(String) // letter followed by one or more alphanumeric chars
     case number(Double) // any valid floating point number
     case string(String) // a string literal surrounded by ""
@@ -54,6 +55,8 @@ private extension Substring.UnicodeScalarView {
             return Token.assign
         case "+":
             return Token.plus
+        case "*":
+            return Token.times
         default:
             self = start
             return nil

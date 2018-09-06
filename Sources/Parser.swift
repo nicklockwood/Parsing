@@ -20,6 +20,7 @@ public indirect enum Expression: Equatable {
     case string(String)
     case variable(String)
     case addition(lhs: Expression, rhs: Expression)
+    case multiplication(lhs: Expression, rhs: Expression)
 }
 
 public enum ParserError: Error, Equatable {
@@ -57,8 +58,20 @@ private extension ArraySlice where Element == Token {
         }
     }
 
-    mutating func readExpression() -> Expression? {
+    mutating func readTerm() -> Expression? {
         guard let lhs = readOperand() else {
+            return nil
+        }
+        let start = self
+        guard self.popFirst() == .times, let rhs = readTerm() else {
+            self = start
+            return lhs
+        }
+        return Expression.multiplication(lhs: lhs, rhs: rhs)
+    }
+
+    mutating func readExpression() -> Expression? {
+        guard let lhs = readTerm() else {
             return nil
         }
         let start = self

@@ -13,7 +13,7 @@ class FormatterTests: XCTestCase {
 
     func testFormatting() throws {
         let input = """
-        let foo = 5 + 6
+        let foo = 5 * 6 + 7
         let bar = "hello\\\\world"
         let baz = "goodbye \\"world\\""
         print foo + bar + baz
