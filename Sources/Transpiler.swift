@@ -11,7 +11,7 @@ import Foundation
 // MARK: interface
 
 public enum TranspilerError: Error, Equatable {
-    case undefinedVariable(String)
+    case undefinedVariable(String, at: Range<String.Index>)
 }
 
 public func transpile(_ program: [Statement]) throws -> String {
@@ -37,7 +37,7 @@ class Context {
 extension Statement {
 
     func transpile(in context: Context) throws {
-        switch self {
+        switch self.type {
         case .declaration(name: let name, value: let expression):
             let (type, value) = try expression.transpile(in: context)
             context.variables[name] = type
@@ -53,7 +53,7 @@ extension Statement {
 extension Expression {
 
     func transpile(in context: Context) throws -> (Type, String) {
-        switch self {
+        switch self.type {
         case .number(let double):
             return (.number, String(double))
         case .string(let string):
@@ -63,7 +63,7 @@ extension Expression {
             return (.string, "\"\(escapedString)\"")
         case .variable(let name):
             guard let type = context.variables[name] else {
-                throw TranspilerError.undefinedVariable(name)
+                throw TranspilerError.undefinedVariable(name, at: self.range)
             }
             // TODO: escape reserved names
             return (type, name)

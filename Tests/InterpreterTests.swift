@@ -82,8 +82,9 @@ class InterpreterTests: XCTestCase {
     func testPrintUnknownVariable() throws {
         let input = "print foo"
         let program = try parse(input)
+        let expected = RuntimeError.undefinedVariable("foo", at: input.range(of: "foo")!)
         XCTAssertThrowsError(try evaluate(program)) { error in
-            XCTAssertEqual(error as? RuntimeError, .undefinedVariable("foo"))
+            XCTAssertEqual(error as? RuntimeError, expected)
         }
     }
 }

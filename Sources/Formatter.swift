@@ -23,7 +23,7 @@ public func format(_ program: [Statement]) -> String {
 extension Statement: CustomStringConvertible {
 
     public var description: String {
-        switch self {
+        switch self.type {
         case .declaration(name: let name, value: let expression):
             return "let \(name) = \(expression)"
         case .print(let expression):
@@ -35,7 +35,7 @@ extension Statement: CustomStringConvertible {
 extension Expression: CustomStringConvertible {
 
     public var description: String {
-        switch self {
+        switch self.type {
         case .number(let double):
             return String(format: "%g", double)
         case .string(let string):

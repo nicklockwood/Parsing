@@ -11,7 +11,7 @@ import Foundation
 // MARK: interface
 
 public enum RuntimeError: Error, Equatable {
-    case undefinedVariable(String)
+    case undefinedVariable(String, at: Range<String.Index>)
 }
 
 public func evaluate(_ program: [Statement]) throws -> String {
@@ -46,7 +46,7 @@ class Environment {
 extension Statement {
 
     func evaluate(in environment: Environment) throws {
-        switch self {
+        switch self.type {
         case .declaration(name: let name, value: let expression):
             let value = try expression.evaluate(in: environment)
             environment.variables[name] = value
@@ -60,14 +60,14 @@ extension Statement {
 extension Expression {
 
     func evaluate(in environment: Environment) throws -> Value {
-        switch self {
+        switch self.type {
         case .number(let double):
             return .number(double)
         case .string(let string):
             return .string(string)
         case .variable(let name):
             guard let value = environment.variables[name] else {
-                throw RuntimeError.undefinedVariable(name)
+                throw RuntimeError.undefinedVariable(name, at: self.range)
             }
             return value
         case .addition(lhs: let expression1, rhs: let expression2):

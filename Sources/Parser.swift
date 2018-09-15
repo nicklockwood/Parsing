@@ -10,26 +10,39 @@ import Foundation
 
 // MARK: interface
 
-public enum Statement: Equatable {
+public enum StatementType: Equatable {
     case declaration(name: String, value: Expression)
     case print(Expression)
 }
 
-public indirect enum Expression: Equatable {
+public struct Statement: Equatable {
+    let type: StatementType
+    let range: Range<String.Index>
+}
+
+public indirect enum ExpressionType: Equatable {
     case number(Double)
     case string(String)
     case variable(String)
     case addition(lhs: Expression, rhs: Expression)
 }
 
+public struct Expression: Equatable {
+    let type: ExpressionType
+    let range: Range<String.Index>
+}
+
 public enum ParserError: Error, Equatable {
     case unexpectedToken(Token)
+    case missingAssign(at: String.Index)
+    case missingExpression(at: String.Index)
+    case missingIdentifier(at: String.Index)
 }
 
 public func parse(_ input: String) throws -> [Statement] {
-    var tokens = try ArraySlice(tokenize(input))
+    var tokens = ArraySlice(tokenize(input))
     var statements: [Statement] = []
-    while let statement = tokens.readStatement() {
+    while let statement = try tokens.readStatement() {
         statements.append(statement)
     }
     if let token = tokens.first {
@@ -44,54 +57,75 @@ private extension ArraySlice where Element == Token {
 
     mutating func readOperand() -> Expression? {
         let start = self
-        switch self.popFirst() {
-        case Token.identifier(let variable)?:
-            return Expression.variable(variable)
-        case Token.number(let double)?:
-            return Expression.number(double)
-        case Token.string(let string)?:
-            return Expression.string(string)
+        let type: ExpressionType
+        switch self.popFirst()?.type {
+        case .identifier(let variable)?:
+            type = .variable(variable)
+        case .number(let double)?:
+            type = .number(double)
+        case .string(let string)?:
+            type = .string(string)
         default:
             self = start
             return nil
         }
+        return Expression(type: type, range: start.first!.range)
     }
 
-    mutating func readExpression() -> Expression? {
+    mutating func readExpression() throws -> Expression? {
         guard let lhs = readOperand() else {
             return nil
         }
-        let start = self
-        guard self.popFirst() == .plus, let rhs = readExpression() else {
-            self = start
+        guard let `operator` = self.first, `operator`.type == .plus else {
             return lhs
         }
-        return Expression.addition(lhs: lhs, rhs: rhs)
+        self.removeFirst()
+        guard let rhs = try readExpression() else {
+            throw ParserError.missingExpression(at: `operator`.range.upperBound)
+        }
+        return Expression(
+            type: .addition(lhs: lhs, rhs: rhs),
+            range: lhs.range.lowerBound ..< rhs.range.upperBound
+        )
     }
 
-    mutating func readDeclaration() -> Statement? {
-        let start = self
-        guard self.popFirst() == .let,
-            case Token.identifier(let name)? = self.popFirst(),
-            self.popFirst() == .assign,
-            let value = self.readExpression()
-        else {
-            self = start
+    mutating func readDeclaration() throws -> Statement? {
+        guard let keyword = self.first, keyword.type == .let else {
             return nil
         }
-        return Statement.declaration(name: name, value: value)
+        self.removeFirst()
+        guard let identifier = self.first, case .identifier(let name) = identifier.type else {
+            throw ParserError.missingIdentifier(at: keyword.range.upperBound)
+        }
+        self.removeFirst()
+        guard let assign = self.first, assign.type == .assign else {
+            throw ParserError.missingAssign(at: identifier.range.upperBound)
+        }
+        self.removeFirst()
+        guard let value = try self.readExpression() else {
+            throw ParserError.missingExpression(at: assign.range.upperBound)
+        }
+        return Statement(
+            type: .declaration(name: name, value: value),
+            range: keyword.range.lowerBound ..< value.range.upperBound
+        )
     }
 
-    mutating func readPrintStatement() -> Statement? {
-        let start = self
-        guard self.popFirst() == .print, let value = self.readExpression() else {
-            self = start
+    mutating func readPrintStatement() throws -> Statement? {
+        guard let keyword = self.first, keyword.type == .print else {
             return nil
         }
-        return Statement.print(value)
+        self.removeFirst()
+        guard let value = try self.readExpression() else {
+            throw ParserError.missingExpression(at: keyword.range.upperBound)
+        }
+        return Statement(
+            type: .print(value),
+            range: keyword.range.lowerBound ..< value.range.upperBound
+        )
     }
 
-    mutating func readStatement() -> Statement? {
-        return self.readDeclaration() ?? self.readPrintStatement()
+    mutating func readStatement() throws -> Statement? {
+        return try self.readDeclaration() ?? self.readPrintStatement()
     }
 }

@@ -93,8 +93,9 @@ class TranspilerTests: XCTestCase {
     func testPrintUnknownVariable() throws {
         let input = "print foo"
         let program = try parse(input)
+        let expected = TranspilerError.undefinedVariable("foo", at: input.range(of: "foo")!)
         XCTAssertThrowsError(try transpile(program)) { error in
-            XCTAssertEqual(error as? TranspilerError, .undefinedVariable("foo"))
+            XCTAssertEqual(error as? TranspilerError, expected)
         }
     }
 
